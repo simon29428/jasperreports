@@ -8,7 +8,7 @@
 		<relativePath>./pom-common.xml</relativePath>
 	</parent>
 	<groupId>net.sf.jasperreports</groupId>
-	<artifactId>jasperreports</artifactId>
+	<artifactId>jasperreports-fork</artifactId>
 	<packaging>jar</packaging>
 	<name>JasperReports Library</name>
 	<description>Free Java Reporting Library</description>
