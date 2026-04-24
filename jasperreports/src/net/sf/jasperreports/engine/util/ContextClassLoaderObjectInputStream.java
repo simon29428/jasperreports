@@ -36,97 +36,96 @@ import net.sf.jasperreports.engine.fonts.FontUtil;
  * A subclass of {@link ObjectInputStream} that uses
  * {@link Thread#getContextClassLoader() the context class loader} to resolve
  * classes encountered in the input stream.
- * 
+ *
  * @author Lucian Chirita (lucianc@users.sourceforge.net)
  */
-public class ContextClassLoaderObjectInputStream extends ObjectInputStream
-{
-	private final JasperReportsContext jasperReportsContext;
+public class ContextClassLoaderObjectInputStream extends ObjectInputStream {
 
-	/**
-	 * Creates an object input stream that reads data from the specified
-	 * {@link InputStream}.
-	 * 
-	 * @param in the input stream to read data from
-	 * @throws IOException
-	 * @see ObjectInputStream#ObjectInputStream(InputStream)
-	 */
-	public ContextClassLoaderObjectInputStream(JasperReportsContext jasperReportsContext, InputStream in) throws IOException
-	{
-		super(in);
-		
-		this.jasperReportsContext = jasperReportsContext;
-		
-		try
-		{
-			enableResolveObject(true);
-		}
-		catch(SecurityException ex)
-		{
-			//FIXMEFONT we silence this for applets. but are there other similar situations that we need to deal with by signing jars?
-		}
-	}
+    private final JasperReportsContext jasperReportsContext;
 
-	/**
-	 *
-	 */
-	public JasperReportsContext getJasperReportsContext()
-	{
-		return jasperReportsContext;
-	}
+    private DeserializationClassFilter deserializationClassFilter;
 
-	/**
-	 * Calls <code>super.resolveClass()</code> and in case this fails with
-	 * {@link ClassNotFoundException} attempts to load the class using the
-	 * context class loader.
-	 */
-	@Override
-	protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException,
-			ClassNotFoundException
-	{
-		try
-		{
-			return super.resolveClass(desc);
-		}
-		catch (ClassNotFoundException e)
-		{
-			ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-			if (contextClassLoader == null)
-			{
-				throw e;
-			}
-			
-			String name = desc.getName();
-			try
-			{
-				//attempt to load the class using the context class loader
-				return Class.forName(name, false, contextClassLoader);
-			}
-			catch (ClassNotFoundException e2)
-			{
-				//fallback to the original exception
-				throw e;
-			}
-		}
-	}
+    /**
+     * Creates an object input stream that reads data from the specified
+     * {@link InputStream}.
+     *
+     * @param in the input stream to read data from
+     * @throws IOException
+     * @see ObjectInputStream#ObjectInputStream(InputStream)
+     */
+    public ContextClassLoaderObjectInputStream(JasperReportsContext jasperReportsContext, InputStream in)
+            throws IOException {
+        super(in);
 
-	
-	/**
-	 * Checks to see if the object is an instance of <code>java.awt.Font</code>, 
-	 * and in case it is, it replaces it with the one looked up for in the font extensions.
-	 */
-	@Override
-	protected Object resolveObject(Object obj) throws IOException
-	{
-		Font font = (obj instanceof Font) ? (Font)obj : null;
-		
-		if (font != null)
-		{
-			return FontUtil.getInstance(jasperReportsContext).resolveDeserializedFont(font);
-		}
-		
-		return obj;
-	}
+        this.jasperReportsContext = jasperReportsContext;
 
+        try {
+            enableResolveObject(true);
+        } catch (SecurityException ex) {
+            // FIXMEFONT we silence this for applets. but are there other similar situations that we need to deal with
+            // by signing jars?
+        }
 
+        this.deserializationClassFilter = new DeserializationClassFilter(jasperReportsContext);
+    }
+
+    /**
+     *
+     */
+    public JasperReportsContext getJasperReportsContext() {
+        return jasperReportsContext;
+    }
+
+    /**
+     * Calls <code>super.resolveClass()</code> and in case this fails with
+     * {@link ClassNotFoundException} attempts to load the class using the
+     * context class loader.
+     */
+    @Override
+    protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+
+        if (deserializationClassFilter.isFilteringEnabled()) {
+            String className = desc.getName();
+            if (className.startsWith("[")) {
+                if (className.endsWith(";")) {
+                    className = className.substring(className.lastIndexOf("[L") + 2, className.length() - 1);
+                } else {
+                    className = className.substring(className.lastIndexOf("[") + 1);
+                }
+            }
+            deserializationClassFilter.checkClassVisibility(className);
+        }
+        try {
+            return super.resolveClass(desc);
+        } catch (ClassNotFoundException e) {
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+            if (contextClassLoader == null) {
+                throw e;
+            }
+
+            String name = desc.getName();
+            try {
+                // attempt to load the class using the context class loader
+                return Class.forName(name, false, contextClassLoader);
+            } catch (ClassNotFoundException e2) {
+                // fallback to the original exception
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Checks to see if the object is an instance of <code>java.awt.Font</code>,
+     * and in case it is, it replaces it with the one looked up for in the font extensions.
+     */
+    @Override
+    protected Object resolveObject(Object obj) throws IOException {
+        Font font = (obj instanceof Font) ? (Font) obj : null;
+
+        if (font != null) {
+            return FontUtil.getInstance(jasperReportsContext).resolveDeserializedFont(font);
+        }
+
+        return obj;
+    }
 }
