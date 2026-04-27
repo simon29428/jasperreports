@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -58,6 +59,8 @@ public class FontUtil {
 
     private JasperReportsContext jasperReportsContext;
 
+    private static final AtomicReference<FontUtil> INSTANCE = new AtomicReference<>();
+
     /**
      *
      */
@@ -69,7 +72,20 @@ public class FontUtil {
      *
      */
     public static FontUtil getInstance(JasperReportsContext jasperReportsContext) {
-        return new FontUtil(jasperReportsContext);
+        do {
+            if (INSTANCE.get() != null) {
+                return INSTANCE.get();
+            } else {
+                final FontUtil fontUtil = new FontUtil(jasperReportsContext);
+                if (INSTANCE.compareAndSet(null, fontUtil)) {
+                    return fontUtil;
+                }
+            }
+        } while (true);
+    }
+
+    public static void setInstance(FontUtil fontUtil) {
+        INSTANCE.set(fontUtil);
     }
 
     /**
