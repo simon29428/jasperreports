@@ -61,7 +61,7 @@ public class FontUtil {
     /**
      *
      */
-    private FontUtil(JasperReportsContext jasperReportsContext) {
+    protected FontUtil(JasperReportsContext jasperReportsContext) {
         this.jasperReportsContext = jasperReportsContext;
     }
 
